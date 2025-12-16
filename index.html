@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>BIG MUMBAI • ADMIN</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Orbitron;
+  background:#f6f3ef;
+  color:#2c2c2c;
+}
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+}
+.card{
+  background:#fff;
+  border-radius:16px;
+  padding:15px;
+  margin-top:15px;
+  box-shadow:0 8px 20px rgba(0,0,0,.08);
+}
+input,button{
+  width:100%;
+  padding:11px;
+  margin-top:10px;
+  border-radius:10px;
+  border:none;
+  font-family:Orbitron;
+}
+input{
+  border:1px solid #c9a24d;
+}
+button{
+  background:#c9a24d;
+  color:#fff;
+  font-weight:700;
+}
+button.off{
+  background:#333;
+}
+.status{
+  margin-top:6px;
+  font-size:12px;
+}
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+
+<!-- 🔐 LOGIN -->
+<div class="container" id="loginBox">
+  <div class="card">
+    <h3>ADMIN LOGIN</h3>
+    <input id="email" placeholder="Email">
+    <input id="pass" type="password" placeholder="Password">
+    <button onclick="login()">LOGIN</button>
+  </div>
+</div>
+
+<!-- 🔥 ADMIN PANEL -->
+<div class="container hidden" id="panel">
+  <h2>BIG MUMBAI SERVER</h2>
+  <div id="uids"></div>
+  <button onclick="addUID()">➕ ADD MORE UID</button>
+</div>
+
+<script>
+// 🔐 LOGIN
+function login(){
+  if(
+    email.value==="admin@gmail.com" &&
+    pass.value==="admin902zx"
+  ){
+    loginBox.classList.add("hidden");
+    panel.classList.remove("hidden");
+  }else{
+    alert("Wrong login");
+  }
+}
+
+// 🔥 FIREBASE
+firebase.initializeApp({
+  apiKey: "AIzaSyCgUHPXpBvpi0cEF2vQ2z8J-c8jI1cj1ko",
+  databaseURL: "https://admin-pannel-de3f4-default-rtdb.firebaseio.com",
+  projectId: "admin-pannel-de3f4"
+});
+const db = firebase.database();
+
+// 🔗 API
+const API_URL =
+"https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=3&pageNo=1";
+
+let uidCount=0;
+let loops={};
+
+// ➕ UID
+function addUID(){
+  uidCount++;
+  uids.innerHTML+=`
+  <div class="card">
+    <h4>UID ${uidCount}</h4>
+    <input id="uid_${uidCount}" placeholder="Enter UID">
+    <button onclick="connect(${uidCount})">SERVER CONNECT</button>
+    <button class="off" onclick="off(${uidCount})">SERVER OFF</button>
+    <div class="status" id="st_${uidCount}">Idle</div>
+  </div>`;
+}
+
+// 🔢 ODD EVEN
+const isEven=n=>n%2===0;
+
+// 🧠 LOGIC
+function predict(seq){
+  const [a,b,c]=seq.map(isEven);
+  if(a&&!b&&a) return "SMALL";
+  if(a&&b&&a) return "BIG";
+  if(!a&&!b&&!c) return "SMALL";
+  if(!a&&b&&!c) return "BIG";
+  if(!a&&b&&c) return "BIG";
+  if(a&&b&&!c) return "SMALL";
+  return "BIG";
+}
+
+// 📡 FETCH + SEND
+async function send(uid,st){
+  const r=await fetch(API_URL);
+  const j=await r.json();
+  const nums=j.data.list.map(x=>Number(x.number));
+  const res=predict(nums);
+  await db.ref("prediction/"+uid).set({
+    prediction:res,
+    time:Date.now()
+  });
+  st.innerText="Connected ✓ | "+res;
+}
+
+// ▶ CONNECT
+function connect(i){
+  const uid=document.getElementById("uid_"+i).value;
+  const st=document.getElementById("st_"+i);
+  if(!uid||loops[uid])return;
+  st.innerText="Connecting...";
+  send(uid,st);
+  loops[uid]=setInterval(()=>send(uid,st),2000);
+}
+
+// ⛔ OFF
+function off(i){
+  const uid=document.getElementById("uid_"+i).value;
+  const st=document.getElementById("st_"+i);
+  if(loops[uid]){
+    clearInterval(loops[uid]);
+    delete loops[uid];
+  }
+  db.ref("prediction/"+uid).remove();
+  st.innerText="Server OFF";
+}
+</script>
+
+</body>
+</html>
